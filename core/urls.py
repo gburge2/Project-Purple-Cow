@@ -22,5 +22,6 @@ urlpatterns = [
     #path('admin/', admin.site.urls),
     path('', views.home),
     path('items', views.items_request),
+    path('<int:id>', views.id_request),
     
 ]
