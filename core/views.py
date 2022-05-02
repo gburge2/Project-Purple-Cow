@@ -13,7 +13,9 @@ def home(request):
 def items_request(request):
     """
     Method to determine what method to execute
-    based off the request's method. 
+    based off the request's method. POST request's
+    must be an array of JSON objects or just a single
+    JSON object. 
     
     Request Methods :
     POST - clears curent items and set new items. 
@@ -23,11 +25,11 @@ def items_request(request):
     """ 
     method = request.method
     if method == 'GET': 
-        return get_items(request)
+        return get_items()
     elif method == 'POST':
         return set_items(request)
     elif method == 'DELETE':
-        return delete_items(request)
+        return delete_items()
 
 @csrf_exempt  
 def id_request(request, id):
@@ -36,16 +38,16 @@ def id_request(request, id):
     based off the request's method. 
     
     Request Methods :
-    POST - clears curent items and set new items. 
-    GET -  retrieves current items. 
-    DELETE - deletes all items.  
+    PUT - updates name of item by id
+    GET -  retrieves item by id 
+    DELETE - deletes item by id  
          
     """ 
     method = request.method
     if method == 'GET': 
         return get_id(id)
     elif method == 'PUT':
-        return update_id(id, request)
+        return update_name_by_id(id, request)
     elif method == 'DELETE':
         return delete_id(id)
 
@@ -61,9 +63,10 @@ def get_id(id):
         repsonse = json.dumps([{'Error' : 'No item with that id.'}])
     return HttpResponse(repsonse, content_type='text/json')
             
-def update_id(id, request):
+def update_name_by_id(id, request):
     """
-    Method to update single item by id 
+    Method to update single item by id . The request must be 
+    a single JSON object. 
 
     """
     try:
@@ -81,8 +84,8 @@ def delete_id(id):
 
     """
     try:
-        Item.objects.filter(id=id).delete()
-        response = json.dumps([{'Success' : 'Deleted Item.'}])
+        Item.objects.get(id = id).delete()
+        response = json.dumps([{'Success' : 'Deleted Item with id '+str(id)}])
     except:
         response = json.dumps([{'Error' : 'No item with that id.'}])
     return HttpResponse(response, content_type='text/json')
@@ -95,7 +98,7 @@ def set_items(request):
     Item.objects.all().delete()   
     return add_items(request)   
 
-def get_items(request):
+def get_items():
     """
     Method to get items. 
 
@@ -111,24 +114,34 @@ def get_items(request):
 
 def add_items(request):   
     """
-    Method to add items. 
+    Method to add item(s). Request can either be a JSON object or an
+    array of JSON objects. 
 
     """
     response_list = []
     payload = json.loads(request.body)
-    for load in payload:
-        name = load['name']
-        item = Item(name=name)
-        try:
-            item.save()
-            response_list.append({'id' : item.id, 'name' : item.name})
-        except:
-            response_list.append({'Failure' : name})
-    response = json.dumps(response_list)
+    if not isinstance(payload, list):
+        name = payload['name']
+        id = payload['id']
+        item = Item(name=name , id=id)
+        item.save()
+        response_list.append({'id' : item.id, 'name' : name})  
+        response = json.dumps(response_list)
+    else:
+        for load in payload:       
+            try:
+                name = load['name']
+                id = load['id']
+                item = Item(name=name , id=id)
+                item.save()
+                response_list.append({'id' : item.id, 'name' : item.name})
+            except:
+                response_list.append({'Error' : str(type(payload))})
+        response = json.dumps(response_list)
     return HttpResponse(response, content_type='text/json')
 
  
-def delete_items(request):
+def delete_items():
     """
     Method to delete items. 
 
